@@ -1,5 +1,6 @@
 package net.badata.protobuf.converter.writer;
 
+//import com.sun.org.slf4j.internal.LoggerFactory;
 import net.badata.protobuf.converter.exception.WriteException;
 import net.badata.protobuf.converter.inspection.DefaultValue;
 import net.badata.protobuf.converter.inspection.NullValueInspector;
@@ -9,6 +10,9 @@ import net.badata.protobuf.converter.utils.FieldUtils;
 
 import java.lang.reflect.InvocationTargetException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Writes data to the domain instance.
  *
@@ -16,6 +20,8 @@ import java.lang.reflect.InvocationTargetException;
  * @author Roman Gushel
  */
 public class DomainWriter extends AbstractWriter {
+
+	private static final Logger s_logger = LoggerFactory.getLogger(DomainWriter.class);
 
 	private final Class<?> destinationClass;
 

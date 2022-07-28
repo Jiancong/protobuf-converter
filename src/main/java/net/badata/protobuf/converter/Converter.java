@@ -16,9 +16,15 @@ import net.badata.protobuf.converter.utils.MessageUtils;
 import net.badata.protobuf.converter.writer.DomainWriter;
 import net.badata.protobuf.converter.writer.ProtobufWriter;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Converts data from Protobuf messages to domain model objects and vice versa.
@@ -27,8 +33,10 @@ import java.util.*;
  * @author Roman Gushel
  */
 public final class Converter {
-
+	private static final Logger s_logger = LoggerFactory.getLogger(Converter.class);
 	private final Configuration configuration;
+
+	private static BufferedWriter writer;
 
 	/**
 	 * Create default converter.
@@ -36,6 +44,13 @@ public final class Converter {
 	 * @return Converter instance.
 	 */
 	public static Converter create() {
+		String fileName = "D:\\converter_log.txt";
+		try {
+			writer = new BufferedWriter(new FileWriter(fileName, true));
+		} catch (IOException e) {
+
+		}
+
 		return create(Configuration.builder().build());
 	}
 
@@ -124,6 +139,8 @@ public final class Converter {
 			throw new ConverterException("Field mapping error", e);
 		} catch (WriteException e) {
 			throw new ConverterException("Domain field value setting error", e);
+		} catch (IOException e) {
+			throw new ConverterException("IO error", e);
 		}
 	}
 
@@ -146,17 +163,31 @@ public final class Converter {
 	}
 
 	private <E extends Message> void fillDomain(final Object domain, final E protobuf,
-			final ProtoClass protoClassAnnotation) throws MappingException, WriteException {
+			final ProtoClass protoClassAnnotation) throws MappingException, WriteException, IOException {
 		Class<?> domainClass = domain.getClass();
 		Mapper fieldMapper = AnnotationUtils.createMapper(protoClassAnnotation);
 		FieldResolverFactory fieldFactory = AnnotationUtils.createFieldFactory(protoClassAnnotation);
-		for (Field field : getDomainFields(domainClass)) {
-			if (configuration.getIgnoredFields().ignored(field)) {
-				continue;
+
+		try {
+
+			writer.append("--------------->");
+			for (Field field : getDomainFields(domainClass)) {
+				if (configuration.getIgnoredFields().ignored(field)) {
+					continue;
+				}
+				writer.append("domainName:" + field.toString() + "\n");
+
+				writer.flush();
+
+				FieldResolver fieldResolver = fieldFactory.createResolver(field);
+				fillDomainField(fieldResolver, fieldMapper.mapToDomainField(fieldResolver, protobuf, domain));
 			}
-			FieldResolver fieldResolver = fieldFactory.createResolver(field);
-			fillDomainField(fieldResolver, fieldMapper.mapToDomainField(fieldResolver, protobuf, domain));
+		} catch (IOException e) {
+			System.out.println("IO exception:" + e);
+		} finally {
+			writer.close();
 		}
+
 	}
 
 	private List<Field> getDomainFields(final Class clazz) {
@@ -175,6 +206,15 @@ public final class Converter {
 
 	private void fillDomainField(final FieldResolver fieldResolver, final MappingResult mappingResult)
 			throws WriteException {
+		try {
+			writer.append("fieldResolver:" + fieldResolver.toString() + "\n");
+			writer.append("mappingResult:" + mappingResult.toString() + "\n");
+			writer.flush();
+		} catch (IOException e) {
+			System.out.println(e);
+		} finally {
+			//writer.close();
+		}
 		DomainWriter fieldWriter = new DomainWriter(mappingResult.getDestination());
 		Object mappedValue = mappingResult.getValue();
 		switch (mappingResult.getCode()) {
